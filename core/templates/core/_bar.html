@@ -1,0 +1,5 @@
+{# værdi, advarsels- og kritisk grænse #}
+<div class="progress" role="progressbar" style="height:.6rem" aria-label="{{ label }}">
+  <div class="progress-bar {% if value >= crit %}bg-danger{% elif value >= warn %}bg-warning{% else %}bg-success{% endif %}"
+       style="width:{{ value|floatformat:0 }}%"></div>
+</div>

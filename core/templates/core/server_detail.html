@@ -1,0 +1,27 @@
+{% extends "core/base.html" %}
+{% block title %}{{ server.name }}{% endblock %}
+{% block content %}
+<nav aria-label="breadcrumb"><ol class="breadcrumb"><li class="breadcrumb-item"><a href="{% url 'dashboard' %}">Servere</a></li>
+  <li class="breadcrumb-item active">{{ server.name }}</li></ol></nav>
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">{{ server.name }} <small class="text-muted fs-6">{{ server.host }}</small></h1>
+  <a class="btn btn-sm btn-outline-primary" href="{{ grafana_full }}" target="_blank" rel="noopener">Åbn i Grafana</a>
+</div>
+<div class="row g-3 mb-4">
+{% for p in panels %}
+  <div class="col-lg-4"><div class="card shadow-sm"><div class="card-header small">{{ p.title }}</div>
+    <iframe src="{{ p.url }}" title="{{ p.title }}" height="220" class="w-100 border-0" loading="lazy"></iframe></div></div>
+{% endfor %}
+</div>
+<h2 class="h5">Containere</h2>
+<div class="card shadow-sm"><div class="table-responsive">
+<table class="table table-hover mb-0 align-middle">
+  <thead><tr><th>Navn</th><th>Image</th><th>Status</th></tr></thead>
+  <tbody>
+  {% for c in server.containers.all %}
+    <tr><td>{{ c.name }}</td><td class="text-muted">{{ c.image }}</td>
+    <td><span class="badge {% if c.state == 'running' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ c.status }}</span></td></tr>
+  {% empty %}<tr><td colspan="3" class="text-muted">Ingen containere fundet.</td></tr>{% endfor %}
+  </tbody>
+</table></div></div>
+{% endblock %}

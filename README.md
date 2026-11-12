@@ -1,24 +1,51 @@
 # django-projekt – overvågning af Linux-servere og containere
 
-Django-app der indsamler CPU (load/kerner), RAM, disk, oppetid og Docker-containere
-fra lokale Linux-servere (lokalt eller via SSH) og viser dem på et dashboard.
+Django (servere, containere, brugere, Bootstrap-frontend) + Grafana (tidsserier og alarmer)
+oven på en fælles PostgreSQL-database.
 
-## Opsætning
+```
+Servere ──► collector (manage.py collect) ──► PostgreSQL ◄── Grafana
+                                                  ▲            │ iframe
+                                  Django + Bootstrap ──────────┘
+```
+
+## Kør med Docker Compose
+```bash
+cp .env.example .env      # ret adgangskoder og SECRET_KEY
+docker compose up -d --build
+```
+- Django: http://localhost:8000  (login: `admin` / `admin`, medmindre du har sat `DJANGO_ADMIN_*` i `.env`)
+- Grafana: http://localhost:3000 (bruger `admin`, adgangskode fra `GRAFANA_ADMIN_PASSWORD`)
+
+**Skift standard-adgangskoden** (`docker compose exec web python manage.py changepassword admin`)
+før andre kan nå systemet. Skift også `GRAFANA_RO_PASSWORD` i både `.env` og `docker/db-init.sql`
+**før første start** (scriptet kører kun, når databasen oprettes første gang).
+
+## Tilføj servere
+1. Log ind på Django → Admin → Servere → tilføj. `localhost` måler Docker-værten
+   (collector-containeren ser værtens CPU/RAM/containere via `/proc` og Docker-socketten).
+2. Fjernservere nås via SSH: læg en nøgle uden adgangskode i `./ssh`, fjern kommentaren på
+   `./ssh:/root/.ssh:ro` i `docker-compose.yml`, og angiv bruger/port/nøglesti på serveren.
+   Brugeren skal have lov at køre `docker`.
+3. Collector henter nye målinger hvert 60. sekund. Dashboardet viser dem, og Grafana-panelerne
+   på hver servers side viser de seneste 24 timer.
+
+## Lokal udvikling (uden Docker)
 ```bash
 python3 -m venv .venv && source .venv/bin/activate
 pip install -r requirements.txt
-python manage.py migrate
-python manage.py runserver
+python manage.py migrate && python manage.py runserver
+python manage.py collect            # eller --interval 60
 ```
+Uden `POSTGRES_DB` bruger Django SQLite. Grafana-panelerne kræver Compose-opsætningen.
 
-## Standard-login
-`migrate` opretter en admin, hvis der ingen superbruger er: **admin / admin**.
-Sæt egne værdier med `DJANGO_ADMIN_USER` og `DJANGO_ADMIN_PASSWORD` før første `migrate`,
-og **skift adgangskoden** (`python manage.py changepassword admin`) før andre kan nå systemet.
+## Sikkerhed
+- Grafana tillader anonym *læse*adgang, så panelerne kan indlejres. Udsæt ikke port 3000
+  for upålidelige netværk, eller sæt en reverse proxy med login foran.
+- Collector kører som root og har Docker-socketten, hvilket svarer til root på værten.
+- Frontend henter Bootstrap fra jsDelivr (CDN). På net uden internet skal filerne lægges i `static/`.
 
-## Brug
-1. Log ind på `/admin/` og tilføj servere (`localhost` måler maskinen Django kører på).
-2. Fjernservere kræver SSH-nøgle uden adgangskode og `docker`-adgang for brugeren.
-3. `python manage.py collect` (eller `--interval 60` for løbende), eller vælg handlingen
-   "Indsaml målinger nu" i serverlisten.
-4. Dashboardet er på `/` (kræver login).
+## Tests
+```bash
+python manage.py test
+```

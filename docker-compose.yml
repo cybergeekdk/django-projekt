@@ -1,0 +1,64 @@
+services:
+  db:
+    image: postgres:16
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: monitor
+      POSTGRES_USER: django
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?sæt POSTGRES_PASSWORD i .env}
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+      - ./docker/db-init.sql:/docker-entrypoint-initdb.d/10-grafana.sql:ro
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U django -d monitor"]
+      interval: 5s
+      retries: 10
+
+  web:
+    build: .
+    restart: unless-stopped
+    env_file: .env
+    environment: &dj
+      POSTGRES_DB: monitor
+      POSTGRES_USER: django
+      POSTGRES_HOST: db
+    depends_on:
+      db: {condition: service_healthy}
+    ports:
+      - "8000:8000"
+
+  # Indsamler målinger. Kører som root for at kunne bruge Docker-socket og SSH-nøgler.
+  collector:
+    build: .
+    restart: unless-stopped
+    user: "0"
+    command: python manage.py collect --interval 60
+    env_file: .env
+    environment: *dj
+    depends_on:
+      web: {condition: service_started}
+    volumes:
+      - /var/run/docker.sock:/var/run/docker.sock   # containere på denne vært
+      # - ./ssh:/root/.ssh:ro                       # nøgler til fjernservere
+
+  grafana:
+    image: grafana/grafana:11.2.0
+    restart: unless-stopped
+    depends_on:
+      db: {condition: service_healthy}
+    environment:
+      GF_SECURITY_ADMIN_PASSWORD: ${GRAFANA_ADMIN_PASSWORD:?sæt GRAFANA_ADMIN_PASSWORD i .env}
+      GF_SECURITY_ALLOW_EMBEDDING: "true"          # iframes i Django
+      GF_AUTH_ANONYMOUS_ENABLED: "true"            # læseadgang til indlejrede paneler
+      GF_AUTH_ANONYMOUS_ORG_ROLE: Viewer
+      GRAFANA_RO_PASSWORD: ${GRAFANA_RO_PASSWORD:-grafana_ro_change_me}
+    volumes:
+      - grafana-data:/var/lib/grafana
+      - ./grafana/provisioning:/etc/grafana/provisioning:ro
+      - ./grafana/dashboards:/var/lib/grafana/dashboards:ro
+    ports:
+      - "3000:3000"
+
+volumes:
+  pgdata:
+  grafana-data:

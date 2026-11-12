@@ -41,6 +41,16 @@ class AccessTests(TestCase):
     def test_default_admin_exists(self):
         self.assertTrue(get_user_model().objects.filter(username="admin", is_superuser=True).exists())
 
+    def test_detail_has_grafana_panels(self):
+        srv = Server.objects.create(name="web 1", host="localhost")
+        self.client.login(username="admin", password="admin")
+        r = self.client.get(f"/servers/{srv.pk}/")
+        self.assertContains(r, "d-solo/server-overblik")
+        self.assertContains(r, "var-server=web%201")
+
+    def test_login_page(self):
+        self.assertEqual(self.client.get("/login/").status_code, 200)
+
     def test_dashboard_requires_login(self):
         self.assertEqual(self.client.get("/").status_code, 302)
         self.assertTrue(self.client.login(username="admin", password="admin"))

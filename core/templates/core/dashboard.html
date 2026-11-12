@@ -1,24 +1,34 @@
-<!doctype html>
-<html lang="da"><head><meta charset="utf-8"><meta http-equiv="refresh" content="30">
-<title>Serveroverblik</title>
-<style>
-body{font-family:system-ui,sans-serif;margin:2rem;background:#f5f5f5;color:#222}
-.card{background:#fff;border-radius:8px;padding:1rem 1.5rem;margin-bottom:1rem;box-shadow:0 1px 3px #0002}
-.ok{color:#0a7d2c}.bad{color:#c0262d}.warn{color:#b86e00}
-table{border-collapse:collapse;width:100%}td,th{text-align:left;padding:.3rem .6rem;border-bottom:1px solid #eee}
-</style></head><body>
-<h1>Serveroverblik <small><a href="/admin/">Admin</a></small></h1>
-{% for s in servers %}{% with m=s.latest %}
-<div class="card"><h2>{{ s.name }} <small>{{ s.host }}</small></h2>
-{% if not m %}<p>Ingen målinger endnu. Kør <code>python manage.py collect</code>.</p>
-{% elif not m.reachable %}<p class="bad">Ikke nået: {{ m.error }}</p>
-{% else %}<p>
-CPU: <b class="{% if m.cpu_percent > 90 %}bad{% elif m.cpu_percent > 70 %}warn{% else %}ok{% endif %}">{{ m.cpu_percent }}%</b> ·
-RAM: <b class="{% if m.mem_percent > 90 %}bad{% elif m.mem_percent > 75 %}warn{% else %}ok{% endif %}">{{ m.mem_percent }}%</b> ·
-Disk: <b class="{% if m.disk_percent > 90 %}bad{% elif m.disk_percent > 80 %}warn{% else %}ok{% endif %}">{{ m.disk_percent }}%</b> ·
-Oppetid: {{ m.uptime_seconds|floatformat:0 }} s · <small>{{ m.created }}</small></p>
-{% if s.containers.all %}<table><tr><th>Container</th><th>Image</th><th>Status</th></tr>
-{% for c in s.containers.all %}<tr><td>{{ c.name }}</td><td>{{ c.image }}</td>
-<td class="{% if c.state == 'running' %}ok{% else %}bad{% endif %}">{{ c.status }}</td></tr>{% endfor %}</table>{% endif %}
-{% endif %}</div>{% endwith %}{% empty %}<p>Ingen servere. Tilføj dem i <a href="/admin/core/server/add/">admin</a>.</p>{% endfor %}
-</body></html>
+{% extends "core/base.html" %}
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+  <h1 class="h3 mb-0">Servere</h1>
+  {% if user.is_staff %}<a class="btn btn-sm btn-primary" href="{% url 'admin:core_server_add' %}">Tilføj server</a>{% endif %}
+</div>
+<div class="row g-3">
+{% for s in servers %}
+{% with m=s.latest %}
+  <div class="col-md-6 col-xl-4"><div class="card h-100 shadow-sm">
+    <div class="card-body">
+      <div class="d-flex justify-content-between">
+        <h2 class="h5"><a class="text-decoration-none" href="{% url 'server_detail' s.pk %}">{{ s.name }}</a></h2>
+        {% if not m %}<span class="badge text-bg-secondary">Ingen data</span>
+        {% elif m.reachable %}<span class="badge text-bg-success">Online</span>
+        {% else %}<span class="badge text-bg-danger">Offline</span>{% endif %}
+      </div>
+      <div class="text-muted small mb-3">{{ s.host }}</div>
+      {% if m and m.reachable %}
+        <div class="small d-flex justify-content-between"><span>CPU</span><span>{{ m.cpu_percent }}%</span></div>
+        {% include "core/_bar.html" with value=m.cpu_percent warn=70 crit=90 label="CPU" %}
+        <div class="small d-flex justify-content-between mt-2"><span>RAM</span><span>{{ m.mem_percent }}%</span></div>
+        {% include "core/_bar.html" with value=m.mem_percent warn=75 crit=90 label="RAM" %}
+        <div class="small d-flex justify-content-between mt-2"><span>Disk</span><span>{{ m.disk_percent }}%</span></div>
+        {% include "core/_bar.html" with value=m.disk_percent warn=80 crit=90 label="Disk" %}
+        <div class="small text-muted mt-3">Containere: {{ s.containers.all|length }}
+          · opdateret {{ m.created|timesince }} siden</div>
+      {% elif m %}<div class="alert alert-danger small mb-0">{{ m.error }}</div>{% endif %}
+    </div>
+  </div></div>
+{% endwith %}
+{% empty %}<p class="text-muted">Ingen servere endnu.</p>{% endfor %}
+</div>
+{% endblock %}
