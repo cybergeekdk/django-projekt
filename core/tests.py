@@ -1,7 +1,7 @@
 from django.contrib.auth import get_user_model
 from django.test import TestCase
 
-from .collector import collect, parse
+from .collector import collect, parse, ssh_command
 from .models import Container, Server
 
 SAMPLE = """##load
@@ -55,3 +55,24 @@ class AccessTests(TestCase):
         self.assertEqual(self.client.get("/").status_code, 302)
         self.assertTrue(self.client.login(username="admin", password="admin"))
         self.assertEqual(self.client.get("/").status_code, 200)
+
+
+class SshCommandTests(TestCase):
+    def test_accepts_new_host_keys_and_uses_private_key(self):
+        import os, tempfile
+        with tempfile.NamedTemporaryFile() as key:
+            srv = Server(name="r", host="10.0.0.5", ssh_user="u", ssh_key_path=key.name)
+            cmd = ssh_command(srv)
+        self.assertIn("StrictHostKeyChecking=accept-new", cmd)
+        self.assertIn(key.name, cmd)
+        self.assertIn("u@10.0.0.5", cmd)
+
+    def test_public_key_is_rejected_with_clear_message(self):
+        srv = Server(name="r", host="10.0.0.5", ssh_key_path="/root/.ssh/id_rsa.pub")
+        with self.assertRaisesMessage(RuntimeError, "offentlige"):
+            ssh_command(srv)
+
+    def test_missing_key_file_is_explained(self):
+        srv = Server(name="r", host="10.0.0.5", ssh_key_path="/home/x/.ssh/id_rsa")
+        with self.assertRaisesMessage(RuntimeError, "inde i"):
+            ssh_command(srv)

@@ -1,5 +1,6 @@
 """Indsamler målinger fra Linux-servere (lokalt eller via SSH) inkl. Docker-containere."""
 import json
+import os
 import subprocess
 
 from .models import Container, Metric
@@ -15,16 +16,30 @@ exit 0
 """
 
 
+def ssh_command(server):
+    """Bygger ssh-kommandoen. Kaster RuntimeError ved åbenlyse opsætningsfejl."""
+    cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
+           # Husk serverens nøgle første gang (TOFU); afvis den hvis den senere ændres.
+           "-o", "StrictHostKeyChecking=accept-new",
+           "-p", str(server.ssh_port)]
+    known_hosts = os.environ.get("SSH_KNOWN_HOSTS")
+    if known_hosts:
+        cmd += ["-o", f"UserKnownHostsFile={known_hosts}"]
+    if server.ssh_key_path:
+        key = server.ssh_key_path
+        if key.endswith(".pub"):
+            raise RuntimeError(f"{key} er den offentlige nøgle. Angiv den private (uden .pub).")
+        if not os.path.isfile(key):
+            raise RuntimeError(
+                f"Nøglefilen {key} findes ikke her. I Docker skal stien være inde i "
+                "containeren, fx /root/.ssh/id_rsa.")
+        cmd += ["-i", key, "-o", "IdentitiesOnly=yes"]
+    target = f"{server.ssh_user}@{server.host}" if server.ssh_user else server.host
+    return cmd + ["--", target, SCRIPT]
+
+
 def _run(server, timeout=20):
-    if server.is_local:
-        cmd = ["sh", "-c", SCRIPT]
-    else:
-        cmd = ["ssh", "-o", "BatchMode=yes", "-o", "ConnectTimeout=5",
-               "-p", str(server.ssh_port)]
-        if server.ssh_key_path:
-            cmd += ["-i", server.ssh_key_path]
-        target = f"{server.ssh_user}@{server.host}" if server.ssh_user else server.host
-        cmd += ["--", target, SCRIPT]
+    cmd = ["sh", "-c", SCRIPT] if server.is_local else ssh_command(server)
     res = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
     if res.returncode != 0:
         raise RuntimeError(res.stderr.strip() or f"Exit {res.returncode}")

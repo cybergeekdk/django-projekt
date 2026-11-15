@@ -34,12 +34,15 @@ services:
     user: "0"
     command: python manage.py collect --interval 60
     env_file: .env
-    environment: *dj
+    environment:
+      <<: *dj
+      SSH_KNOWN_HOSTS: /data/ssh/known_hosts          # huskes mellem genstarter
     depends_on:
       web: {condition: service_started}
     volumes:
       - /var/run/docker.sock:/var/run/docker.sock   # containere på denne vært
-      # - ./ssh:/root/.ssh:ro                       # nøgler til fjernservere
+      - ./ssh:/root/.ssh:ro                         # private nøgler til fjernservere
+      - sshdata:/data/ssh
 
   grafana:
     image: grafana/grafana:11.2.0
@@ -60,5 +63,6 @@ services:
       - "3000:3000"
 
 volumes:
+  sshdata:
   pgdata:
   grafana-data:

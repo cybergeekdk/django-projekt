@@ -24,9 +24,15 @@ før andre kan nå systemet. Skift også `GRAFANA_RO_PASSWORD` i både `.env` og
 ## Tilføj servere
 1. Log ind på Django → Admin → Servere → tilføj. `localhost` måler Docker-værten
    (collector-containeren ser værtens CPU/RAM/containere via `/proc` og Docker-socketten).
-2. Fjernservere nås via SSH: læg en nøgle uden adgangskode i `./ssh`, fjern kommentaren på
-   `./ssh:/root/.ssh:ro` i `docker-compose.yml`, og angiv bruger/port/nøglesti på serveren.
-   Brugeren skal have lov at køre `docker`.
+2. Fjernservere nås via SSH fra collector-containeren:
+   - Læg den **private** nøgle i `./ssh/` (fx `./ssh/id_rsa`, `chmod 600`). Mappen er git-ignoreret.
+   - Nøglen skal være tilladt på serveren: `ssh-copy-id -i ./ssh/id_rsa.pub bruger@server`.
+   - I Django skriver du stien **set indefra containeren**: `/root/.ssh/id_rsa`
+     (ikke `/home/dig/.ssh/...` og ikke `.pub`).
+   - Serverens værtsnøgle huskes automatisk første gang (`accept-new`) i volumen `sshdata`.
+     Skifter serverens nøgle senere, afvises forbindelsen. Nulstil med
+     `docker compose exec collector ssh-keygen -f /data/ssh/known_hosts -R server`.
+   - Brugeren skal have lov at køre `docker`.
 3. Collector henter nye målinger hvert 60. sekund. Dashboardet viser dem, og Grafana-panelerne
    på hver servers side viser de seneste 24 timer.
 
