@@ -2,7 +2,7 @@
   "uid": "server-overblik",
   "title": "Server-overblik",
   "schemaVersion": 39,
-  "version": 1,
+  "version": 2,
   "editable": true,
   "refresh": "30s",
   "time": {
@@ -54,7 +54,6 @@
         "defaults": {
           "unit": "percent",
           "min": 0,
-          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -72,6 +71,7 @@
               }
             ]
           },
+          "max": 100,
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
@@ -112,7 +112,6 @@
         "defaults": {
           "unit": "percent",
           "min": 0,
-          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -130,6 +129,7 @@
               }
             ]
           },
+          "max": 100,
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
@@ -155,7 +155,7 @@
     {
       "id": 3,
       "type": "timeseries",
-      "title": "Disk-forbrug (%)",
+      "title": "Disk-forbrug pr. filsystem (%)",
       "datasource": {
         "type": "grafana-postgresql-datasource",
         "uid": "monitor-pg"
@@ -170,7 +170,6 @@
         "defaults": {
           "unit": "percent",
           "min": 0,
-          "max": 100,
           "thresholds": {
             "mode": "absolute",
             "steps": [
@@ -188,6 +187,7 @@
               }
             ]
           },
+          "max": 100,
           "custom": {
             "thresholdsStyle": {
               "mode": "line"
@@ -206,7 +206,175 @@
           "editorMode": "code",
           "format": "time_series",
           "rawQuery": true,
-          "rawSql": "SELECT m.created AS time, s.name AS metric, m.disk_percent AS value\nFROM core_metric m JOIN core_server s ON s.id = m.server_id\nWHERE s.name IN ($server) AND m.reachable AND $__timeFilter(m.created)\nORDER BY 1"
+          "rawSql": "SELECT m.created AS time, s.name || ' ' || d.mount AS metric, d.used_percent AS value\nFROM core_diskusage d JOIN core_metric m ON m.id = d.metric_id JOIN core_server s ON s.id = m.server_id\nWHERE s.name IN ($server) AND $__timeFilter(m.created)\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 5,
+      "type": "timeseries",
+      "title": "Swap-forbrug (%)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "monitor-pg"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 0,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "max": 100,
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "monitor-pg"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT m.created AS time, s.name AS metric, m.swap_percent AS value\nFROM core_metric m JOIN core_server s ON s.id = m.server_id\nWHERE s.name IN ($server) AND m.reachable AND m.swap_percent IS NOT NULL AND $__timeFilter(m.created)\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 6,
+      "type": "timeseries",
+      "title": "Container CPU (%)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "monitor-pg"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 8,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "monitor-pg"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT cs.created AS time, s.name || ' / ' || cs.name AS metric, cs.cpu_percent AS value\nFROM core_containerstat cs JOIN core_server s ON s.id = cs.server_id\nWHERE s.name IN ($server) AND cs.cpu_percent IS NOT NULL AND $__timeFilter(cs.created)\nORDER BY 1"
+        }
+      ]
+    },
+    {
+      "id": 7,
+      "type": "timeseries",
+      "title": "Container RAM (%)",
+      "datasource": {
+        "type": "grafana-postgresql-datasource",
+        "uid": "monitor-pg"
+      },
+      "gridPos": {
+        "h": 8,
+        "w": 8,
+        "x": 16,
+        "y": 8
+      },
+      "fieldConfig": {
+        "defaults": {
+          "unit": "percent",
+          "min": 0,
+          "thresholds": {
+            "mode": "absolute",
+            "steps": [
+              {
+                "color": "green",
+                "value": null
+              },
+              {
+                "color": "orange",
+                "value": 75
+              },
+              {
+                "color": "red",
+                "value": 90
+              }
+            ]
+          },
+          "max": 100,
+          "custom": {
+            "thresholdsStyle": {
+              "mode": "line"
+            }
+          }
+        },
+        "overrides": []
+      },
+      "targets": [
+        {
+          "refId": "A",
+          "datasource": {
+            "type": "grafana-postgresql-datasource",
+            "uid": "monitor-pg"
+          },
+          "editorMode": "code",
+          "format": "time_series",
+          "rawQuery": true,
+          "rawSql": "SELECT cs.created AS time, s.name || ' / ' || cs.name AS metric, cs.mem_percent AS value\nFROM core_containerstat cs JOIN core_server s ON s.id = cs.server_id\nWHERE s.name IN ($server) AND cs.mem_percent IS NOT NULL AND $__timeFilter(cs.created)\nORDER BY 1"
         }
       ]
     },
@@ -222,7 +390,7 @@
         "h": 9,
         "w": 24,
         "x": 0,
-        "y": 8
+        "y": 16
       },
       "fieldConfig": {
         "defaults": {},
@@ -258,6 +426,40 @@
                 }
               }
             ]
+          },
+          {
+            "matcher": {
+              "id": "byName",
+              "options": "restarts"
+            },
+            "properties": [
+              {
+                "id": "thresholds",
+                "value": {
+                  "mode": "absolute",
+                  "steps": [
+                    {
+                      "color": "green",
+                      "value": null
+                    },
+                    {
+                      "color": "orange",
+                      "value": 1
+                    },
+                    {
+                      "color": "red",
+                      "value": 3
+                    }
+                  ]
+                }
+              },
+              {
+                "id": "custom.cellOptions",
+                "value": {
+                  "type": "color-text"
+                }
+              }
+            ]
           }
         ]
       },
@@ -271,7 +473,7 @@
           "editorMode": "code",
           "format": "table",
           "rawQuery": true,
-          "rawSql": "SELECT s.name AS server, c.name AS container, c.image, c.state, c.status, c.updated\nFROM core_container c JOIN core_server s ON s.id = c.server_id\nWHERE s.name IN ($server) ORDER BY 1, 2"
+          "rawSql": "SELECT s.name AS server, c.name AS container, c.image, c.state, c.status,\n       c.cpu_percent AS cpu, c.mem_percent AS ram, c.restart_count AS restarts, c.exit_code, c.oom_killed AS oom, c.updated\nFROM core_container c JOIN core_server s ON s.id = c.server_id\nWHERE s.name IN ($server) ORDER BY c.restart_count DESC, 1, 2"
         }
       ]
     }

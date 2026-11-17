@@ -36,6 +36,20 @@ før andre kan nå systemet. Skift også `GRAFANA_RO_PASSWORD` i både `.env` og
 3. Collector henter nye målinger hvert 60. sekund. Dashboardet viser dem, og Grafana-panelerne
    på hver servers side viser de seneste 24 timer.
 
+## Hvad måles
+| Område | Detaljer |
+|---|---|
+| System | CPU (load/kerner), RAM, **swap**, oppetid |
+| Diske | **Alle filsystemer** med brug og **inodes** (pseudo-mounts og containerens egne bind-mounts filtreres fra) |
+| Containere | Status, **CPU, RAM, genstarter, exit-kode, OOM** (graf-historik for kørende containere) |
+| Tjenester | **Fejlede systemd-tjenester** (`systemctl --failed`) |
+| Opdateringer | Ventende apt-opdateringer, heraf sikkerhed, og **genstart påkrævet** (kun Debian/Ubuntu) |
+
+En container vises som problem, hvis den har ≥3 genstarter (crash-loop), er OOM-dræbt eller er stoppet med en fejlkode.
+
+**Oprydning:** Målinger ældre end `METRICS_RETENTION_DAYS` (standard 30) slettes automatisk hver time af collectoren.
+Manuelt: `python manage.py prune --days 14`.
+
 ## Lokal udvikling (uden Docker)
 ```bash
 python3 -m venv .venv && source .venv/bin/activate

@@ -9,7 +9,10 @@ from .models import Server
 PANELS = [
     (1, "CPU (load / kerner, %)"),
     (2, "RAM-forbrug (%)"),
-    (3, "Disk-forbrug (%)"),
+    (3, "Disk-forbrug pr. filsystem (%)"),
+    (5, "Swap-forbrug (%)"),
+    (6, "Container CPU (%)"),
+    (7, "Container RAM (%)"),
 ]
 
 

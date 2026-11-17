@@ -152,3 +152,6 @@ X_FRAME_OPTIONS = "SAMEORIGIN"
 # Grafana (adresse set fra BROWSERENS side, ikke fra containeren)
 GRAFANA_URL = os.environ.get("GRAFANA_URL", "http://localhost:3000").rstrip("/")
 GRAFANA_DASHBOARD_UID = "server-overblik"
+
+# Hvor længe målinger gemmes (dage)
+METRICS_RETENTION_DAYS = int(os.environ.get("METRICS_RETENTION_DAYS", "30"))

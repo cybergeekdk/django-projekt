@@ -9,19 +9,51 @@
 </div>
 <div class="row g-3 mb-4">
 {% for p in panels %}
-  <div class="col-lg-4"><div class="card shadow-sm"><div class="card-header small">{{ p.title }}</div>
+  <div class="col-lg-4 col-md-6"><div class="card shadow-sm"><div class="card-header small">{{ p.title }}</div>
     <iframe src="{{ p.url }}" title="{{ p.title }}" height="220" class="w-100 border-0" loading="lazy"></iframe></div></div>
 {% endfor %}
 </div>
+{% with m=server.latest %}{% if m and m.reachable %}
+<div class="row g-3 mb-4">
+  <div class="col-lg-7"><h2 class="h5">Filsystemer</h2>
+    <div class="card shadow-sm"><div class="table-responsive"><table class="table mb-0 align-middle">
+      <thead><tr><th>Monteret</th><th>Størrelse</th><th style="width:35%">Brugt</th><th>Inodes</th></tr></thead><tbody>
+      {% for d in m.disks.all %}<tr><td>{{ d.mount }}<div class="small text-muted">{{ d.device }} · {{ d.fstype }}</div></td>
+        <td>{{ d.size_bytes|filesizeformat }}</td>
+        <td><div class="small">{{ d.used_percent }}%</div>{% include "core/_bar.html" with value=d.used_percent warn=80 crit=90 label=d.mount %}</td>
+        <td class="{% if d.inode_percent and d.inode_percent >= 90 %}text-danger fw-semibold{% endif %}">{% if d.inode_percent is not None %}{{ d.inode_percent }}%{% else %}–{% endif %}</td></tr>
+      {% empty %}<tr><td colspan="4" class="text-muted">Ingen filsystemer fundet.</td></tr>{% endfor %}
+      </tbody></table></div></div></div>
+  <div class="col-lg-5"><h2 class="h5">System</h2>
+    <div class="card shadow-sm"><ul class="list-group list-group-flush">
+      <li class="list-group-item d-flex justify-content-between">Oppetid<span>{{ m.uptime_seconds|default:0|floatformat:0 }} s</span></li>
+      <li class="list-group-item d-flex justify-content-between">Swap<span>{% if m.swap_percent is not None %}{{ m.swap_percent }}%{% else %}ingen{% endif %}</span></li>
+      <li class="list-group-item d-flex justify-content-between">Genstart påkrævet
+        <span class="badge {% if m.reboot_required %}text-bg-warning{% else %}text-bg-success{% endif %}">{% if m.reboot_required %}Ja{% else %}Nej{% endif %}</span></li>
+      <li class="list-group-item d-flex justify-content-between">Ventende opdateringer<span>{% if m.updates_pending is None %}–{% else %}{{ m.updates_pending }} (heraf {{ m.security_updates|default:0 }} sikkerhed){% endif %}</span></li>
+      <li class="list-group-item d-flex justify-content-between">Fejlede tjenester
+        <span class="badge {% if m.failed_services %}text-bg-danger{% elif m.failed_services is None %}text-bg-secondary{% else %}text-bg-success{% endif %}">{% if m.failed_services is None %}ukendt{% else %}{{ m.failed_services }}{% endif %}</span></li>
+    </ul></div>
+    {% if server.failed_service_list.all %}<div class="card shadow-sm mt-3"><ul class="list-group list-group-flush">
+      {% for f in server.failed_service_list.all %}<li class="list-group-item"><span class="text-danger fw-semibold">{{ f.unit }}</span>
+        <div class="small text-muted">{{ f.description }}</div></li>{% endfor %}</ul></div>{% endif %}
+  </div>
+</div>
+{% endif %}{% endwith %}
 <h2 class="h5">Containere</h2>
 <div class="card shadow-sm"><div class="table-responsive">
 <table class="table table-hover mb-0 align-middle">
-  <thead><tr><th>Navn</th><th>Image</th><th>Status</th></tr></thead>
+  <thead><tr><th>Navn</th><th>Image</th><th>Status</th><th>CPU</th><th>RAM</th><th>Genstarter</th></tr></thead>
   <tbody>
   {% for c in server.containers.all %}
     <tr><td>{{ c.name }}</td><td class="text-muted">{{ c.image }}</td>
-    <td><span class="badge {% if c.state == 'running' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ c.status }}</span></td></tr>
-  {% empty %}<tr><td colspan="3" class="text-muted">Ingen containere fundet.</td></tr>{% endfor %}
+    <td><span class="badge {% if c.state == 'running' %}text-bg-success{% else %}text-bg-danger{% endif %}">{{ c.status }}</span>
+      {% if c.oom_killed %}<span class="badge text-bg-danger">OOM</span>{% endif %}
+      {% if c.state == 'exited' and c.exit_code %}<span class="badge text-bg-secondary">exit {{ c.exit_code }}</span>{% endif %}</td>
+    <td>{% if c.cpu_percent is not None %}{{ c.cpu_percent }}%{% else %}–{% endif %}</td>
+    <td>{% if c.mem_bytes is not None %}{{ c.mem_bytes|filesizeformat }}{% if c.mem_percent is not None %} <span class="text-muted small">({{ c.mem_percent }}%)</span>{% endif %}{% else %}–{% endif %}</td>
+    <td class="{% if c.restart_count >= 3 %}text-danger fw-semibold{% endif %}">{{ c.restart_count }}{% if c.restart_count >= 3 %} ⚠{% endif %}</td></tr>
+  {% empty %}<tr><td colspan="6" class="text-muted">Ingen containere fundet.</td></tr>{% endfor %}
   </tbody>
 </table></div></div>
 {% endblock %}

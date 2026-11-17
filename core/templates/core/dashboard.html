@@ -21,8 +21,18 @@
         {% include "core/_bar.html" with value=m.cpu_percent warn=70 crit=90 label="CPU" %}
         <div class="small d-flex justify-content-between mt-2"><span>RAM</span><span>{{ m.mem_percent }}%</span></div>
         {% include "core/_bar.html" with value=m.mem_percent warn=75 crit=90 label="RAM" %}
-        <div class="small d-flex justify-content-between mt-2"><span>Disk</span><span>{{ m.disk_percent }}%</span></div>
+        <div class="small d-flex justify-content-between mt-2"><span>Disk (fyldteste)</span><span>{{ m.disk_percent }}%</span></div>
         {% include "core/_bar.html" with value=m.disk_percent warn=80 crit=90 label="Disk" %}
+        {% if m.swap_percent is not None %}
+        <div class="small d-flex justify-content-between mt-2"><span>Swap</span><span>{{ m.swap_percent }}%</span></div>
+        {% include "core/_bar.html" with value=m.swap_percent warn=30 crit=60 label="Swap" %}{% endif %}
+        <div class="mt-3 d-flex flex-wrap gap-1">
+          {% if m.failed_services %}<span class="badge text-bg-danger">{{ m.failed_services }} fejlede tjenester</span>{% endif %}
+          {% with bad=s.problem_containers %}{% if bad %}<span class="badge text-bg-danger">{{ bad|length }} container{{ bad|length|pluralize:"e" }} med problemer</span>{% endif %}{% endwith %}
+          {% if m.reboot_required %}<span class="badge text-bg-warning">Genstart påkrævet</span>{% endif %}
+          {% if m.security_updates %}<span class="badge text-bg-warning">{{ m.security_updates }} sikkerhedsopdat.</span>
+          {% elif m.updates_pending %}<span class="badge text-bg-secondary">{{ m.updates_pending }} opdateringer</span>{% endif %}
+        </div>
         <div class="small text-muted mt-3">Containere: {{ s.containers.all|length }}
           · opdateret {{ m.created|timesince }} siden</div>
       {% elif m %}<div class="alert alert-danger small mb-0">{{ m.error }}</div>{% endif %}
